@@ -8,14 +8,13 @@
 #include <string.h>
 #include <signal.h>
 #include "linkedlist.h"
-#include <termios.h>
 
 pid_t r_procces;
 char command[1024];
 char promptName[1024];
 char *argv[1024];
 char ch, gc;
-int last_command = 0; // or -1
+int last_command = 0; 
 List commands_Memmory;
 char *new_command;
 int stdout_fd = 0;
@@ -26,6 +25,12 @@ char currentCommand[1024]; // Curret command buffer
 List variables;
 int status = 0; // status
 int process(char **args);
+
+typedef struct Var
+{
+    char *key;
+    char *value;
+} Var;
 
 ///////////////////////////////////////////helper fuction//////////////////////////////////////////
 
@@ -58,14 +63,6 @@ char **find_Pipe(char **args)
     return NULL;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-// Our 'Hash map'
-typedef struct Var
-{
-    char *key;
-    char *value;
-} Var;
-
 
 void sighandler(int sig)
 {
@@ -86,34 +83,31 @@ void sighandler(int sig)
 // Tokens to split a command ("ls -l -r" => {ls, -l, -r})
 void splitCommand(char *command)
 {
-    char *token = strtok(command, " ");
+    char *p_command = strtok(command, " ");
     int i = 0;
-    while (token != NULL)
+    while (p_command != NULL)
     {
-        argv[i] = token;
-        token = strtok(NULL, " ");
+        argv[i] = p_command;
+        p_command = strtok(NULL, " ");
         i++;
     }
     argv[i] = NULL;
 }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int execute(char **args)
 {
-    int rv = -1, c_pip = 0, i = count_Args(args);
+    int rv = -1, c_pip = 0, i = count_Args(args) , amper = -1;
     char **pipPointer = find_Pipe(args); // returns pointer to the location of the character in the string, NULL otherwise.
     int pipe_fd[2];
-    int amper = -1;
     char *outfile;
-    int redirect_fd = -1;
-
-    int fd, redirect = -1;
-    pid_t pid;
+    int fd , redirect_fd = -1;
+    int flag = 1;
 
     // for task 9 , if there pip
     if (pipPointer != NULL)
     {
-
         *pipPointer = NULL;
         c_pip++;
 
@@ -127,7 +121,7 @@ int execute(char **args)
 
         int cpid = fork();
 
-        if (cpid == -1)
+        if (cpid == -1) // the forking not success
         {
             perror("Error occurred: Failed to create new process\n");
             exit(EXIT_FAILURE);
@@ -137,10 +131,10 @@ int execute(char **args)
         else if (cpid == 0)
         {
 
-            int status = close(STDOUT_FILENO);
+            int status = close(0);
             if (status == -1)
             {
-                printf("Failed to close standard output file descriptor\n");
+                printf("Failed to close standard input file descriptor\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -160,16 +154,15 @@ int execute(char **args)
             exit(0);
         }
 
-        stdout_fd = dup(STDOUT_FILENO); // duplicate fd, return new file descriptor on the same file.
+        stdout_fd = dup(1); // duplicate fd, return new file descriptor on the same file.
         if (stdout_fd == -1)
         {
-            // Error occurred
             printf("Failed to duplicate file descriptor\n");
             exit(EXIT_FAILURE);
         }
         // Redirect output to write end of pipe
         // Duplicate FD to FD2, closing FD2 and making it open on the same file.
-        dup2(pipe_fd[1], STDOUT_FILENO);
+        dup2(pipe_fd[1], 1);
     }
 
     // if the command empty
@@ -184,25 +177,13 @@ int execute(char **args)
         amper = 1;
         args[i - 1] = NULL;
     }
-    else
-    {
-        amper = 0;
-    }
 
-    // for task 6  run the last command
+    // for task 6 run the last command
     if (strcmp(args[0], "!!") == 0)
     {
-        
-        if (commands_Memmory.size > 0)
-        {
-            strcpy(currentCommand, last_Command);
-            splitCommand(currentCommand);
-            execute(argv);
-        }
-        else
-        {
-            printf("The command history list is empty");
-        }
+        strcpy(currentCommand, last_Command);
+        splitCommand(currentCommand);
+        execute(argv);
         return 0;
     }
 
@@ -220,7 +201,6 @@ int execute(char **args)
 
     if (!strncmp(args[0], "if", 2))
     {
-        int flag = 1;
         while (argv[flag] != NULL)
         {
             argv[flag - 1] = argv[flag];
@@ -310,9 +290,9 @@ int execute(char **args)
     if (strcmp(args[0], "prompt") == 0)
     {
         char newPromptName[1024] = "";
-        for (int k = 2; k < i; ++k)
+        for (int j = 2; j < i; ++j)
         {
-            strcat(newPromptName, args[k]);
+            strcat(newPromptName, args[j]);
             strcat(newPromptName, " ");
         }
         strcpy(promptName, newPromptName);
@@ -353,7 +333,7 @@ int execute(char **args)
             }
             else
             {
-                printf("%s ", echo_var[0]);
+                printf("%s ", *echo_var);
             }
             echo_var++;
         }
@@ -421,7 +401,7 @@ int execute(char **args)
         execvp(args[0], args);
     }
     /* parent continues here */
-    if (amper == 0)
+    else
     {
         wait(&status);
         rv = status;
@@ -457,7 +437,6 @@ int execute(char **args)
 int process(char **args)
 {
     int rv = -1;
-    // do control command
     if (args[0] == NULL)
     {
         rv = 0;
@@ -476,7 +455,7 @@ int main()
     strcpy(promptName, "hello: ");
     int commandPosition = -1;
     
-    char *previous_Command = malloc(sizeof(char) * 1024);
+    char *previous_Command;
 
     while (1)
     {
@@ -536,23 +515,18 @@ int main()
         fgets(command + 1, 1023, stdin);
         command[strlen(command) - 1] = '\0';
 
+        // task 7 
         if (!strcmp(command, "quit"))
         {
-            /*
-            Task number: 7
-            command to exit the shell:
-            hello: quit
-            */
-            // tcsetattr(STDIN_FILENO, TCSANOW, &old_terminal);
             exit(0);
         }
+
         if (strcmp(command, "!!"))
         {
             strcpy(previous_Command, command);
         }
 
-        // adding the new command to the command list
-
+        previous_Command = malloc(sizeof(char) * strlen(command));
         strcpy(previous_Command, command);
         add(&commands_Memmory, previous_Command);
 
