@@ -1,6 +1,0 @@
-total 32
--rw-rw---- 1 bar bar     0 Jan 21 14:00 file
--rwxrwxr-x 1 bar bar 16424 Jan 21 14:00 myshell
--rw-rw-r-- 1 bar bar  1032 Jan 21 13:55 shell1.c
--rw-rw-r-- 1 bar bar  1443 Jan 21 13:55 shell2.c
--rw-rw-r-- 1 bar bar  2687 Jan 21 13:55 shell3.c
