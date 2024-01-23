@@ -80,7 +80,7 @@ void sighandler(int sig)
     }
 }
 
-// Tokens to split a command ("ls -l -r" => {ls, -l, -r})
+//split The command ("ls -l -r" => {ls, -l, -r})
 void splitCommand(char *command)
 {
     char *p_command = strtok(command, " ");
@@ -100,10 +100,10 @@ int execute(char **args)
 {
     int rv = -1, c_pip = 0, i = count_Args(args) , amper = -1;
     char **pipPointer = find_Pipe(args); // returns pointer to the location of the character in the string, NULL otherwise.
+
     int pipe_fd[2];
     char *outfile;
     int fd , redirect_fd = -1;
-    int flag = 1;
 
     // for task 9 , if there pip
     if (pipPointer != NULL)
@@ -201,12 +201,13 @@ int execute(char **args)
 
     if (!strncmp(args[0], "if", 2))
     {
-        while (argv[flag] != NULL)
+        int t =0;
+        while (argv[t] != NULL)
         {
-            argv[flag - 1] = argv[flag];
-            flag++;
+            argv[t - 1] = argv[i];
+            t++;
         }
-        argv[flag - 1] = NULL;
+        argv[t - 1] = NULL;
         int currstatus = execute(args);
 
         char insidestatement[1024];
@@ -218,14 +219,14 @@ int execute(char **args)
             {
                 fgets(insidestatement, 1024, stdin);
                 insidestatement[strlen(insidestatement) - 1] = '\0';
-                int elseFlag = 1;
+                int elsei = 1;
                 while (strcmp(insidestatement, "fi"))
                 {
                     if (!strcmp(insidestatement, "else"))
                     {
-                        elseFlag = 0;
+                        elsei = 0;
                     }
-                    if (elseFlag)
+                    if (elsei)
                     {
                         splitCommand(insidestatement);
                         process(argv);
@@ -310,7 +311,7 @@ int execute(char **args)
         }
         while (*echo_var)
         {
-            if (*echo_var != NULL && *echo_var[0] == '$')
+            if (echo_var != NULL && echo_var[0][0] == '$')
             {
                 
                 // task 3:
@@ -333,12 +334,15 @@ int execute(char **args)
             }
             else
             {
-                printf("%s ", *echo_var);
+                printf("%s ", echo_var[0]);
             }
             echo_var++;
         }
         printf("\n");
         return 0;
+    }
+    else{
+        amper = 0 ;
     }
 
     // task 1:
@@ -384,11 +388,13 @@ int execute(char **args)
             }
             else if (!strcmp(args[i - 2], ">") || !strcmp(args[i - 2], "2>"))
             {
-                fd = creat(outfile, 0660);
+                if((fd = creat(outfile, 0660))<0){
+                    perror("Error: Can't create file");
+                    exit(1);
+                }
             }
             else
             {
-                // stdin
                 fd = open(outfile, O_RDONLY);
             }
 
@@ -396,19 +402,22 @@ int execute(char **args)
             dup(fd);
             close(fd);
             args[i - 2] = NULL;
+
         }
 
-        execvp(args[0], args);
+        if (execvp(args[0], args) == -1){
+                printf("%s\n", command);
+                exit(1);
+        }
+
     }
-    /* parent continues here */
-    else
-    {
-        wait(&status);
+    else{
+                wait(&status);
         rv = status;
         r_procces = -1;
     }
 
-    if (c_pip)
+    if (c_pip != 0)
     {
         int status = close(STDOUT_FILENO);
         if (status == -1)
@@ -461,56 +470,35 @@ int main()
     {
         printf("%s", promptName);
         ch = getchar();
-        if (ch == '\003')
+        
+        if (ch == '\033')
         {
-            printf("\33[2K");
+            printf("\033[1A"); // line up
+            printf("\x1b[2K"); // delete line
             getchar(); // skip the [
             gc = getchar();
             switch (gc)
             {
             case 'A':
-                if (commands_Memmory.size == 0)
+                if (commandPosition > 0)
                 {
-                    break;
+                    commandPosition--;
                 }
-                // code for arrow up
-                else if (last_command > 0)
-                {
-                    last_command--;
-                }
-                previous_Command=(char *)get(&commands_Memmory, last_command);
-
                 printf("%s", (char *)get(&commands_Memmory, last_command));
                 break;
 
             case 'B': // code for arrow down
-                if (commands_Memmory.size==0 ||last_command >= commands_Memmory.size-1 )
+                if (commandPosition  < commands_Memmory.size-1 )
                 {
-                    if(last_command == commands_Memmory.size-1){
-                        last_command++;
-                    }
-                    break;
+                    commandPosition++;
                 }
-                else 
-                {
-                    last_command++;
-                }
-
-                previous_Command=(char *)get(&commands_Memmory, last_command);
-                printf("%s\n", (char *)get(&commands_Memmory, last_command));
+                printf("%s\n", (char *)get(&commands_Memmory, commandPosition));
                 break;
             }
 
-            command[0]=ch;
+            getchar();
             continue;
         }
-        if (ch == '\n')
-        {
-
-            splitCommand((char *)get(&commands_Memmory, commandPosition));
-            execute(argv);
-        }
-
         command[0] = ch;
         fgets(command + 1, 1023, stdin);
         command[strlen(command) - 1] = '\0';
@@ -523,7 +511,7 @@ int main()
 
         if (strcmp(command, "!!"))
         {
-            strcpy(previous_Command, command);
+            strcpy(last_Command, command);
         }
 
         previous_Command = malloc(sizeof(char) * strlen(command));
