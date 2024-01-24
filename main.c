@@ -8,7 +8,6 @@
 #include <string.h>
 #include <signal.h>
 #include "linkedlist.h"
-#include <termios.h>
 
 pid_t r_procces;
 char command[1024];
@@ -485,21 +484,6 @@ int main()
             {
                 splitCommand((char *)get(&commands_Memmory, commandPosition));
                 execute(argv);
-                // adding the new command to the command list
-                previous_Command = (char *)get(&commands_Memmory, commandPosition);
-                new_command2 = malloc(sizeof(char) * strlen(previous_Command));
-                previous_Command[strlen(previous_Command)] = ' ';
-                strcpy(new_command2, previous_Command);
-                add(&commands_Memmory, new_command2);
-
-                // update the last command index to be the updated size
-                commandPosition = commands_Memmory.size;
-
-                strcpy(command, new_command2);
-                splitCommand(command);
-
-                // running the new command
-                status = process(argv);
             }
             continue;
         }
