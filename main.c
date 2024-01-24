@@ -8,19 +8,24 @@
 #include <string.h>
 #include <signal.h>
 #include "linkedlist.h"
+#include <termios.h>
 
 pid_t r_procces;
 char command[1024];
 char promptName[1024];
+char *new_command2;
 char *argv[1024];
 char ch, gc;
-int last_command = 0; 
+int last_command = 0;
 List commands_Memmory;
 char *new_command;
 int stdout_fd = 0;
-int mainProcess =0;
+int mainProcess = 0;
+int i;
 
-char last_Command[1024]; // Previous command buffer
+char *end_if = "fi\n";
+
+char last_Command[1024];   // Previous command buffer
 char currentCommand[1024]; // Curret command buffer
 List variables;
 int status = 0; // status
@@ -63,24 +68,25 @@ char **find_Pipe(char **args)
     return NULL;
 }
 
-
 void sighandler(int sig)
 {
-    if (getpid() == mainProcess) {
+    if (getpid() == mainProcess)
+    {
         printf("\n");
         printf("You typed Control-C!");
         printf("\n");
-        write(0, promptName, strlen(promptName)+1);
+        write(0, promptName, strlen(promptName) + 1);
         return;
     }
-    else{
+    else
+    {
         fprintf(stderr, "\ncaught signal: %d\n", sig);
-        kill(mainProcess, SIGKILL); //If the SHELL runs another process, the process will be thrown by the system
+        kill(mainProcess, SIGKILL); // If the SHELL runs another process, the process will be thrown by the system
         return;
     }
 }
 
-//split The command ("ls -l -r" => {ls, -l, -r})
+// split The command ("ls -l -r" => {ls, -l, -r})
 void splitCommand(char *command)
 {
     char *p_command = strtok(command, " ");
@@ -98,12 +104,12 @@ void splitCommand(char *command)
 
 int execute(char **args)
 {
-    int rv = -1, c_pip = 0, i = count_Args(args) , amper = -1;
+    int rv = -1, c_pip = 0, i = count_Args(args), amper = -1;
     char **pipPointer = find_Pipe(args); // returns pointer to the location of the character in the string, NULL otherwise.
 
     int pipe_fd[2];
     char *outfile;
-    int fd , redirect_fd = -1;
+    int fd, redirect_fd = -1;
 
     // for task 9 , if there pip
     if (pipPointer != NULL)
@@ -199,68 +205,6 @@ int execute(char **args)
         return 0;
     }
 
-    if (!strncmp(args[0], "if", 2))
-    {
-        int t =0;
-        while (argv[t] != NULL)
-        {
-            argv[t - 1] = argv[i];
-            t++;
-        }
-        argv[t - 1] = NULL;
-        int currstatus = execute(args);
-
-        char insidestatement[1024];
-        if (!currstatus)
-        {
-            fgets(insidestatement, 1024, stdin);
-            insidestatement[strlen(insidestatement) - 1] = '\0';
-            if (!strcmp(insidestatement, "then"))
-            {
-                fgets(insidestatement, 1024, stdin);
-                insidestatement[strlen(insidestatement) - 1] = '\0';
-                int elsei = 1;
-                while (strcmp(insidestatement, "fi"))
-                {
-                    if (!strcmp(insidestatement, "else"))
-                    {
-                        elsei = 0;
-                    }
-                    if (elsei)
-                    {
-                        splitCommand(insidestatement);
-                        process(argv);
-                    }
-                    fgets(insidestatement, 1024, stdin);
-                    insidestatement[strlen(insidestatement) - 1] = '\0';
-                }
-            }
-            else
-            {
-                printf("Bad if statemnt");
-                return 0;
-            }
-        }
-        else
-        {
-            fgets(insidestatement, 1024, stdin);
-            insidestatement[strlen(insidestatement) - 1] = '\0';
-            while (strcmp(insidestatement, "else"))
-            {
-                fgets(insidestatement, 1024, stdin);
-                insidestatement[strlen(insidestatement) - 1] = '\0';
-            }
-            while (strcmp(insidestatement, "fi"))
-            {
-                splitCommand(insidestatement);
-                process(argv);
-                fgets(insidestatement, 1024, stdin);
-                insidestatement[strlen(insidestatement) - 1] = '\0';
-            }
-        }
-        return 0;
-    }
-
     /// for task 11 read variable decleration
     if (strcmp(args[0], "read") == 0)
     {
@@ -303,7 +247,7 @@ int execute(char **args)
     if (strcmp(args[0], "echo") == 0)
     {
         char **echo_var = args + 1;
-        // task 4: 
+        // task 4:
         if (strcmp(*echo_var, "$?") == 0)
         {
             printf("%d\n", status);
@@ -313,7 +257,7 @@ int execute(char **args)
         {
             if (echo_var != NULL && echo_var[0][0] == '$')
             {
-                
+
                 // task 3:
 
                 Node *node = variables.head;
@@ -341,8 +285,9 @@ int execute(char **args)
         printf("\n");
         return 0;
     }
-    else{
-        amper = 0 ;
+    else
+    {
+        amper = 0;
     }
 
     // task 1:
@@ -388,7 +333,8 @@ int execute(char **args)
             }
             else if (!strcmp(args[i - 2], ">") || !strcmp(args[i - 2], "2>"))
             {
-                if((fd = creat(outfile, 0660))<0){
+                if ((fd = creat(outfile, 0660)) < 0)
+                {
                     perror("Error: Can't create file");
                     exit(1);
                 }
@@ -402,17 +348,17 @@ int execute(char **args)
             dup(fd);
             close(fd);
             args[i - 2] = NULL;
-
         }
 
-        if (execvp(args[0], args) == -1){
-                printf("%s\n", command);
-                exit(1);
+        if (execvp(args[0], args) == -1)
+        {
+            printf("%s\n", command);
+            exit(1);
         }
-
     }
-    else{
-                wait(&status);
+    else
+    {
+        wait(&status);
         rv = status;
         r_procces = -1;
     }
@@ -459,51 +405,178 @@ int process(char **args)
 
 int main()
 {
+
     mainProcess = getpid();
     signal(SIGINT, sighandler);
     strcpy(promptName, "hello: ");
-    int commandPosition = -1;
-    
+    int commandPosition = 0;
+
     char *previous_Command;
+    struct termios old_terminal, new_terminal;
+    tcgetattr(STDIN_FILENO, &old_terminal);
 
     while (1)
     {
+        memset(command, 0, sizeof(command));
+        new_terminal = old_terminal;
+        new_terminal.c_lflag &= (ECHOE | ~ICANON);
+        tcsetattr(STDIN_FILENO, TCSANOW, &new_terminal);
+
+        printf("\r");
         printf("%s", promptName);
         ch = getchar();
-        
-        if (ch == '\033')
+        i =1;
+
+
+       //If the user presses the delete key
+        if(ch== 127 || ch == '\b')
         {
-            printf("\033[1A"); // line up
-            printf("\x1b[2K"); // delete line
-            getchar(); // skip the [
+            if(i<strlen(promptName)+1)
+            {
+                printf("\b\b\b   \b");
+                }
+                continue;
+        }
+
+        else if (ch == '\033')
+        {
+            printf("\33[2K"); // delete line
+            getchar();         // skip the [
             gc = getchar();
             switch (gc)
             {
             case 'A':
-                if (commandPosition > 0)
+                if (commands_Memmory.size == 0)
+                {
+                    break;
+                }
+                else if (commandPosition > 0)
                 {
                     commandPosition--;
                 }
-                printf("%s", (char *)get(&commands_Memmory, last_command));
+                previous_Command = (char *)get(&commands_Memmory, commandPosition);
+                printf("%s", (char *)get(&commands_Memmory, commandPosition));
                 break;
 
             case 'B': // code for arrow down
-                if (commandPosition  < commands_Memmory.size-1 )
+                if (commands_Memmory.size == 0 || commandPosition >= commands_Memmory.size - 1)
+                {
+                    if (commandPosition == commands_Memmory.size - 1)
+                    {
+                        commandPosition++;
+                    }
+                    break;
+                }
+                else
                 {
                     commandPosition++;
                 }
+                previous_Command = (char *)get(&commands_Memmory, commandPosition);
                 printf("%s\n", (char *)get(&commands_Memmory, commandPosition));
                 break;
             }
 
-            getchar();
+            command[0] = ch;
             continue;
         }
-        command[0] = ch;
-        fgets(command + 1, 1023, stdin);
+        else if (ch == '\n')
+        {
+            // Restoring the original terminal settings
+            tcsetattr(STDIN_FILENO, TCSANOW, &old_terminal);
+
+            if (commands_Memmory.size > 0)
+            {
+                // adding the new command to the command list
+                previous_Command = (char *)get(&commands_Memmory, commandPosition);
+                new_command2 = malloc(sizeof(char) * strlen(previous_Command));
+                previous_Command[strlen(previous_Command)] = ' ';
+                strcpy(new_command2, previous_Command);
+                add(&commands_Memmory, new_command2);
+
+                // update the last command index to be the updated size
+                commandPosition = commands_Memmory.size;
+
+                strcpy(command, new_command2);
+                splitCommand(command);
+
+                // running the new command
+                status = process(argv);
+            }
+            continue;
+        }
+        else
+        {
+
+            // Restoring the original terminal settings
+            tcsetattr(STDIN_FILENO, TCSANOW, &old_terminal);
+            memset(command, 0, 1024);
+            command[0] = ch;
+            char b;
+            int Flag = 0;
+            i = 1;
+
+            while ((b = getchar()) != '\n')
+            {
+                // If the user presses the delete key
+                if (b == 127 || b == '\b')
+                {
+                    printf("\b \b");
+                    // command[i] = '\0';
+                    i--;
+                }
+                else
+                {
+                    command[i] = b;
+                    i++;
+                };
+            }
+            // adding '\n'
+            command[i] = b;
+
+            /*
+            In C, strings are represented as arrays of characters terminated by a null character '\0'. When you receive input from the user, it is stored in a character array.
+            If you don't add a null character at the end of the array, any string functions that operate on that array will not know where the end of the string is and may read past the end
+            of the array,causing unexpected behavior or even crashes.
+            */
+            i++;
+            command[strlen(command)] = '\0';
+
+            // Resetting the index
+            i = 1;
+        }
+
+        int if_flag = 0;
+        if (!strncmp(command, "if", 2))
+        {
+            if_flag = 1;
+            while (1)
+            {
+                fgets(currentCommand, 1024, stdin);
+                strcat(command, currentCommand);
+                command[strlen(command) - 1] = '\n';
+                if (!strcmp(currentCommand, end_if))
+                    break;
+            }
+            char *commandcurr = "bash";
+            char *argument_list[] = {"bash", "-c", command, NULL};
+            if (fork() == 0)
+            {
+                // Newly spawned child Process. This will be taken over by "bash"
+                int status_code = execvp(commandcurr, argument_list);
+                printf("bash has taken control of this child process. This won't execute unless it terminates abnormally!\n");
+                if (status_code == -1)
+                {
+                    printf("Terminated Incorrectly\n");
+                    return 1;
+                }
+            }
+            wait(&status);
+            strcat(command, currentCommand);
+        }
+
         command[strlen(command) - 1] = '\0';
 
-        // task 7 
+        // task 7
         if (!strcmp(command, "quit"))
         {
             exit(0);
@@ -519,9 +592,20 @@ int main()
         add(&commands_Memmory, previous_Command);
 
         // We will update the last command index to be the updated size
-        last_command = commands_Memmory.size;
+        commandPosition = commands_Memmory.size;
 
-        splitCommand(command);
-        status = process(argv);
+        // if the last command is "if" we dont want to run this command again(Because we already ran it after it was called)
+        if (!if_flag)
+        {
+            splitCommand(command);
+            status = process(argv);
+        }
+        else
+        {
+            continue;
+        }
+
+        // splitCommand(command);
+        // status = process(argv);
     }
 }
