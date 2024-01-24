@@ -412,21 +412,12 @@ int main()
     int commandPosition = 0;
 
     char *previous_Command;
-    // struct termios old_terminal, new_terminal;
-    // tcgetattr(STDIN_FILENO, &old_terminal);
 
     while (1)
     {
-        // memset(command, 0, sizeof(command));
-        // new_terminal = old_terminal;
-        // new_terminal.c_lflag &= (ECHOE | ~ICANON);
-        // tcsetattr(STDIN_FILENO, TCSANOW, &new_terminal);
-
         printf("\r");
         printf("%s", promptName);
         ch = getchar();
-        // i =1;
-
 
        //If the user presses the delete key
         if(ch== 127 || ch == '\b')
@@ -489,9 +480,7 @@ int main()
         }
         else if (ch == '\n') 
         {
-            // splitCommand((char *)get(&commands_Memmory, commandPosition));
-            // execute(argv);
-        
+   
             if (commands_Memmory.size > 0)
             {
                 splitCommand((char *)get(&commands_Memmory, commandPosition));
@@ -510,13 +499,12 @@ int main()
                 splitCommand(command);
 
                 // running the new command
-                status = execute(argv);
+                status = process(argv);
             }
             continue;
         }
         command[0] = ch;
         fgets(command + 1, 1023, stdin);
-        //command[strlen(command) - 1] = '\0';
 
         int if_flag = 0;
         if (!strncmp(command, "if", 2))
@@ -578,7 +566,5 @@ int main()
             continue;
         }
 
-        // splitCommand(command);
-        // status = process(argv);
     }
 }
