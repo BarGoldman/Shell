@@ -412,33 +412,33 @@ int main()
     int commandPosition = 0;
 
     char *previous_Command;
-    struct termios old_terminal, new_terminal;
-    tcgetattr(STDIN_FILENO, &old_terminal);
+    // struct termios old_terminal, new_terminal;
+    // tcgetattr(STDIN_FILENO, &old_terminal);
 
     while (1)
     {
-        memset(command, 0, sizeof(command));
-        new_terminal = old_terminal;
-        new_terminal.c_lflag &= (ECHOE | ~ICANON);
-        tcsetattr(STDIN_FILENO, TCSANOW, &new_terminal);
+        // memset(command, 0, sizeof(command));
+        // new_terminal = old_terminal;
+        // new_terminal.c_lflag &= (ECHOE | ~ICANON);
+        // tcsetattr(STDIN_FILENO, TCSANOW, &new_terminal);
 
         printf("\r");
         printf("%s", promptName);
         ch = getchar();
-        i =1;
+        // i =1;
 
 
        //If the user presses the delete key
         if(ch== 127 || ch == '\b')
         {
-            if(i<strlen(promptName)+1)
+            if(i<strlen(promptName))
             {
                 printf("\b\b\b   \b");
-                }
+            }
                 continue;
         }
 
-        else if (ch == '\033')
+        if (ch == '\033') //up or down was pressed
         {
             printf("\33[2K"); // delete line
             getchar();         // skip the [
@@ -454,6 +454,10 @@ int main()
                 {
                     commandPosition--;
                 }
+                printf("\b");
+                printf("\b");
+                printf("\b");
+                printf("\b");
                 previous_Command = (char *)get(&commands_Memmory, commandPosition);
                 printf("%s", (char *)get(&commands_Memmory, commandPosition));
                 break;
@@ -471,21 +475,27 @@ int main()
                 {
                     commandPosition++;
                 }
+                printf("\b");
+                printf("\b");
+                printf("\b");
+                printf("\b");
                 previous_Command = (char *)get(&commands_Memmory, commandPosition);
-                printf("%s\n", (char *)get(&commands_Memmory, commandPosition));
+                printf("%s", (char *)get(&commands_Memmory, commandPosition));
                 break;
             }
 
-            command[0] = ch;
+            getchar();
             continue;
         }
-        else if (ch == '\n')
+        else if (ch == '\n') 
         {
-            // Restoring the original terminal settings
-            tcsetattr(STDIN_FILENO, TCSANOW, &old_terminal);
-
+            // splitCommand((char *)get(&commands_Memmory, commandPosition));
+            // execute(argv);
+        
             if (commands_Memmory.size > 0)
             {
+                splitCommand((char *)get(&commands_Memmory, commandPosition));
+                execute(argv);
                 // adding the new command to the command list
                 previous_Command = (char *)get(&commands_Memmory, commandPosition);
                 new_command2 = malloc(sizeof(char) * strlen(previous_Command));
@@ -500,50 +510,13 @@ int main()
                 splitCommand(command);
 
                 // running the new command
-                status = process(argv);
+                status = execute(argv);
             }
             continue;
         }
-        else
-        {
-
-            // Restoring the original terminal settings
-            tcsetattr(STDIN_FILENO, TCSANOW, &old_terminal);
-            memset(command, 0, 1024);
-            command[0] = ch;
-            char b;
-            int Flag = 0;
-            i = 1;
-
-            while ((b = getchar()) != '\n')
-            {
-                // If the user presses the delete key
-                if (b == 127 || b == '\b')
-                {
-                    printf("\b \b");
-                    // command[i] = '\0';
-                    i--;
-                }
-                else
-                {
-                    command[i] = b;
-                    i++;
-                };
-            }
-            // adding '\n'
-            command[i] = b;
-
-            /*
-            In C, strings are represented as arrays of characters terminated by a null character '\0'. When you receive input from the user, it is stored in a character array.
-            If you don't add a null character at the end of the array, any string functions that operate on that array will not know where the end of the string is and may read past the end
-            of the array,causing unexpected behavior or even crashes.
-            */
-            i++;
-            command[strlen(command)] = '\0';
-
-            // Resetting the index
-            i = 1;
-        }
+        command[0] = ch;
+        fgets(command + 1, 1023, stdin);
+        //command[strlen(command) - 1] = '\0';
 
         int if_flag = 0;
         if (!strncmp(command, "if", 2))
