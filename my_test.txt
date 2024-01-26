@@ -67,4 +67,68 @@ hi: sort colors.txt | uniq -c | sort -r | head -3
       4 red
       3 blue
       2 green
-hi: quit
+hi: ls  
+colors.txt  file  file1  file2  file3
+hi: sort colors.txt
+black
+blue
+blue
+blue
+green
+green
+red
+red
+red
+red
+hi: uniq -c colors.txt
+      1 blue
+      1 black
+      2 red
+      1 green
+      1 blue
+      1 green
+      2 red
+      1 blue
+hi: head -3 colors.txt
+blue
+black
+red
+hi: echo hi bar
+hi bar 
+hi: !!
+hi bar 
+hi: mkdir bartest
+hi: pwd
+/home/bar/Desktop/test/Shell/mydir
+hi: cd bartest
+hi: pwd
+/home/bar/Desktop/test/Shell/mydir/bartest
+hi: ls -l > goodtest
+hi: cd ..
+hi: pwd
+/home/bar/Desktop/test/Shell/mydir
+hi: prompt = bar:
+bar: echo $?
+0
+bar: ls -e
+ls: invalid option -- 'e'
+Try 'ls --help' for more information.
+bar: echo $?
+512
+bar: ls -e 2> file4
+bar: ls
+bartest  colors.txt  file  file1  file2  file3  file4
+bar: $name = bar
+bar: read lastname
+goldman
+bar: echo hi my name is $name $lastname            
+hi my name is bar goldman 
+bar: if date | grep Fri
+then
+ls
+else
+"good day"
+fi
+Fri Jan 26 01:43:33 PM IST 2024
+bartest  colors.txt  file  file1  file2  file3  file4
+bar: quit
