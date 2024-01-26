@@ -10,17 +10,11 @@
 #include "linkedlist.h"
 
 pid_t r_procces;
-char command[1024];
-char promptName[1024];
-char *new_command2;
+char command[1024] , promptName[1024];
 char *argv[1024];
-char ch, gc;
-int last_command = 0;
+char ch, get_char;
 List commands_Memmory;
-char *new_command;
-int stdout_fd = 0;
-int mainProcess = 0;
-int i;
+int stdout_fd = 0 , mainProcess = 0 , i;
 
 char *end_if = "fi\n";
 
@@ -29,6 +23,7 @@ char currentCommand[1024]; // Curret command buffer
 List variables;
 int status = 0; // status
 int process(char **args);
+
 
 typedef struct Var
 {
@@ -67,6 +62,7 @@ char **find_Pipe(char **args)
     return NULL;
 }
 
+// for part 8 , if the user pressure Control-C 
 void sighandler(int sig)
 {
     if (getpid() == mainProcess)
@@ -85,7 +81,8 @@ void sighandler(int sig)
     }
 }
 
-// split The command ("ls -l -r" => {ls, -l, -r})
+// split The command 
+// like ls -l & will be  {ls , -l , &})
 void splitCommand(char *command)
 {
     char *p_command = strtok(command, " ");
@@ -103,14 +100,14 @@ void splitCommand(char *command)
 
 int execute(char **args)
 {
-    int rv = -1, c_pip = 0, i = count_Args(args), amper = -1;
-    char **pipPointer = find_Pipe(args); // returns pointer to the location of the character in the string, NULL otherwise.
+    int rv = -1, c_pip = 0, i = count_Args(args), amper = -1 ,pipe_fd[2];
+    // returns pointer to the location of the character "|" in the string, NULL otherwise.
+    char **pipPointer = find_Pipe(args); 
 
-    int pipe_fd[2];
     char *outfile;
     int fd, redirect_fd = -1;
 
-    // for task 9 , if there pip
+    // for task 9 , Option to chain several commands in a pipe.
     if (pipPointer != NULL)
     {
         *pipPointer = NULL;
@@ -149,7 +146,7 @@ int execute(char **args)
                 printf("Failed to close file descriptor\n");
                 exit(EXIT_FAILURE);
             }
-            int new_fd = dup(pipe_fd[0]); // Duplicate FD, returning a new file descriptor on the same file
+            int new_fd = dup(pipe_fd[0]); // duplicate FD, returning a new file descriptor on the same file
             if (new_fd == -1)
             {
                 printf("Failed to duplicate file descriptor\n");
@@ -242,7 +239,7 @@ int execute(char **args)
         strcpy(promptName, newPromptName);
         return 0;
     }
-
+    // foe part 4 , 3: 
     if (strcmp(args[0], "echo") == 0)
     {
         char **echo_var = args + 1;
@@ -256,9 +253,7 @@ int execute(char **args)
         {
             if (echo_var != NULL && echo_var[0][0] == '$')
             {
-
                 // task 3:
-
                 Node *node = variables.head;
                 char *new_variable = NULL;
 
@@ -432,23 +427,18 @@ int main()
         {
             printf("\33[2K"); // delete line
             getchar();         // skip the [
-            gc = getchar();
-            switch (gc)
+            get_char = getchar();
+            switch (get_char)
             {
             case 'A':
                 if (commands_Memmory.size == 0)
                 {
                     break;
                 }
-                else if (commandPosition > 0)
+                if (commandPosition > 0)
                 {
                     commandPosition--;
                 }
-                printf("\b");
-                printf("\b");
-                printf("\b");
-                printf("\b");
-                previous_Command = (char *)get(&commands_Memmory, commandPosition);
                 printf("%s", (char *)get(&commands_Memmory, commandPosition));
                 break;
 
@@ -465,11 +455,6 @@ int main()
                 {
                     commandPosition++;
                 }
-                printf("\b");
-                printf("\b");
-                printf("\b");
-                printf("\b");
-                previous_Command = (char *)get(&commands_Memmory, commandPosition);
                 printf("%s", (char *)get(&commands_Memmory, commandPosition));
                 break;
             }
@@ -489,6 +474,7 @@ int main()
         }
         command[0] = ch;
         fgets(command + 1, 1023, stdin);
+        
 
         int if_flag = 0;
         if (!strncmp(command, "if", 2))
@@ -539,7 +525,8 @@ int main()
         // We will update the last command index to be the updated size
         commandPosition = commands_Memmory.size;
 
-        // if the last command is "if" we dont want to run this command again(Because we already ran it after it was called)
+        // if the last command is "if" we dont want to run this command again
+        // Because we already ran it after it was called
         if (!if_flag)
         {
             splitCommand(command);
