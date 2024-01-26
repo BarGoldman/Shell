@@ -6,6 +6,8 @@ In this assignment we will create **SELL**
 We will compile the program by `make all` <br />
 We will run the program: `./myshell`
 
+In the file "my_test.txt" you can find my test
+
 ## My Program Can Do
 We can see that the program executes commands: <br />
 `hello: ls -l` <br />
